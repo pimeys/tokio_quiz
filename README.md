@@ -21,6 +21,9 @@ implement the poll method, which responds with either `Ready` including the
 response value, or `NotReady` and the future should be called again later to
 check the status. You can call poll only until a value is returned.
 
+Futures 0.1 is the version to use. 0.2 never went anywhere and is abandoned.
+The 0.3 version works only with nightly rust.
+
 You can always call `.wait()` from the future to execute it immediately and
 block the current thread.
 
