@@ -61,6 +61,21 @@ blocking, and for [tokio](https://tokio.rs/docs/overview/), and maybe also for
 You should be able to get it working by modifying the Database and its Service
 implementation. You should not touch the Pool or Connection.
 
+## Starting output
+
+```bash
+time cargo run
+    Finished dev [unoptimized + debuginfo] target(s) in 0.06s
+     Running `target/debug/future_quiz`
+[src/main.rs:120] "Creating the first future" = "Creating the first future"
+SELECT `foo`, `bar` FROM table WHERE foo = 'bar'
+[src/main.rs:122] "Creating the second future" = "Creating the second future"
+SELECT `foo`, `bar` FROM table WHERE foo = 'bar'
+[src/main.rs:127] "Waiting for futures to finish..." = "Waiting for futures to finish..."
+0.06user 0.01system 0:10.08elapsed 0%CPU (0avgtext+0avgdata 36404maxresident)k
+0inputs+0outputs (0major+4575minor)pagefaults 0swaps
+```
+
 ## Solution output
 
 ```bash
