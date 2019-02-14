@@ -21,6 +21,9 @@ implement the poll method, which responds with either `Ready` including the
 response value, or `NotReady` and the future should be called again later to
 check the status. You can call poll only until a value is returned.
 
+Futures 0.1 is the version to use. 0.2 never went anywhere and is abandoned.
+The 0.3 version works only with nightly rust.
+
 You can always call `.wait()` from the future to execute it immediately and
 block the current thread.
 
@@ -57,3 +60,17 @@ blocking, and for [tokio](https://tokio.rs/docs/overview/), and maybe also for
 
 You should be able to get it working by modifying the Database and its Service
 implementation. You should not touch the Pool or Connection.
+
+## Solution output
+
+```bash
+time cargo run
+   Finished dev [unoptimized + debuginfo] target(s) in 0.06s
+    Running `target/debug/future_quiz`
+[src/main.rs:148] "Creating the first future" = "Creating the first future"
+[src/main.rs:151] "Creating the second future" = "Creating the second future"
+[src/main.rs:154] "Waiting for futures to finish..." = "Waiting for futures to finish..."
+SELECT `foo`, `bar` FROM table WHERE foo = 'bar'
+SELECT `foo`, `bar` FROM table WHERE foo = 'bar'
+0.07user 0.01system 0:05.08elapsed 1%CPU (0avgtext+0avgdata 36424maxresident)k
+0inputs+0outputs (0major+4735minor)pagefaults 0swaps```
