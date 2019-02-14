@@ -3,7 +3,7 @@ use sql::prelude::*;
 use std::io::{Error, ErrorKind};
 use std::thread;
 use std::time::Duration;
-use tokio;
+use tokio::runtime::Runtime;
 use tower_service::Service;
 
 // A Connection to query from a very slow database.
@@ -109,28 +109,21 @@ fn main() {
         value: String::from("bar"),
     };
 
+    let mut rt = Runtime::new().unwrap();
+
     // Create our two database calls, the dumb implementation will do a
     // blocking query and this actually does not help to make our system
     // faster.
-    let db_call_one = database.call(query.clone());
-    let db_call_two = database.call(query.clone());
-
-    // A combined future, which will execute both futures at the same time. And
-    // return both results.
-    let joined = db_call_one.join(db_call_two);
-
-    // Actually start polling the futures. Launces a threadpool, which call our futures in a certain way:
     //
-    // `db_call_one` is a Future with a poll method, that executes the empty
-    // future::ok() or future::err(e) calling its `poll` function.
-    tokio::run(joined.then(|result| match result {
-        Ok((res1, res2)) => {
-            println!("{:?} and {:?}", res1, res2);
-            future::ok(())
-        }
-        Err(e) => {
-            println!("Error executing the futures: {:?}", e);
-            future::ok(())
-        }
-    }));
+    // The calls here go directly to the runtime, which will start executing
+    // them in a separate thread.
+    dbg!("Creating the first future");
+    rt.spawn(database.call(query.clone()).then(|_| future::ok(())));
+    dbg!("Creating the second future");
+    rt.spawn(database.call(query.clone()).then(|_| future::ok(())));
+
+    // Block the current thread until all the futures are finished, then exit
+    // and print a stacktrace if the execution had any problems.
+    dbg!("Waiting for futures to finish...");
+    rt.shutdown_on_idle().wait().unwrap();
 }
