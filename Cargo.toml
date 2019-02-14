@@ -1,0 +1,11 @@
+[package]
+name = "future_quiz"
+version = "0.1.0"
+authors = ["Julius de Bruijn <bruijn@prisma.io>"]
+edition = "2018"
+
+[dependencies]
+futures = "0.1"
+tokio-threadpool = "0.1"
+tower-service = "0.2"
+sql = { git = "https://github.com/prisma/sql.git", branch = "master" }
