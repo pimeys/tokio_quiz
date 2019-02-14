@@ -1,14 +1,23 @@
-use futures::{self, future, Async, Future, Poll};
+use futures::{
+    self,
+    future::{self, lazy, poll_fn},
+    Async, Future, Poll,
+};
 use sql::prelude::*;
-use std::io::{Error, ErrorKind};
-use std::thread;
-use std::time::Duration;
-use tokio;
+use std::{
+    io::{Error, ErrorKind},
+    sync::Arc,
+    thread,
+    time::Duration,
+};
+use tokio::runtime::Runtime;
+use tokio_threadpool::blocking;
 use tower_service::Service;
 
 // A Connection to query from a very slow database.
 struct Connection;
 
+// DO NOT MODIFY THIS
 impl Connection {
     pub fn new() -> Connection {
         Connection {}
@@ -26,6 +35,7 @@ struct Pool {
     connections: Vec<Connection>,
 }
 
+// DO NOT MODIFY THIS
 impl Pool {
     fn new() -> Pool {
         Pool {
@@ -52,23 +62,30 @@ impl Database {
         Database { pool: Pool::new() }
     }
 
-    pub fn query(&self, query: SelectQuery) -> Result<(), Error> {
+    pub fn query(&self, query: Arc<String>) -> Result<&'static str, Error> {
         let conn = self.pool.get()?;
-        let query = select_from("table")
-            .columns(&["foo", "bar"])
-            .so_that(query.field.equals(query.value))
-            .compile()
-            .unwrap();
         conn.query(&query)?;
 
-        Ok(())
+        Ok("DONE QUERY")
+    }
+}
+
+struct DataResolver {
+    database: Arc<Database>,
+}
+
+impl DataResolver {
+    pub fn new() -> DataResolver {
+        let database = Arc::new(Database::new());
+
+        DataResolver { database }
     }
 }
 
 // The basic building block of the Tower library. Think of it like Twitter's
 // Finagle for Scala. You define the request (SelectQuery) and response
 // (empty). Future needs to be boxed to have dynamic dispatch.
-impl Service<SelectQuery> for Database {
+impl Service<SelectQuery> for DataResolver {
     type Response = &'static str;
     type Error = Error;
 
@@ -87,10 +104,23 @@ impl Service<SelectQuery> for Database {
     // does a blocking query and returns a simple `ok()` future when done. This
     // needs to be improved.
     fn call(&mut self, req: SelectQuery) -> Self::Future {
-        match self.query(req) {
-            Ok(_) => Box::new(future::ok("RESULT FOO")),
-            Err(e) => Box::new(future::err(e)),
-        }
+        let database = self.database.clone();
+
+        let query = Arc::new(
+            select_from("table")
+                .columns(&["foo", "bar"])
+                .so_that(req.field.equals(req.value))
+                .compile()
+                .unwrap(),
+        );
+
+        Box::new(lazy(move || {
+            poll_fn(move || {
+                let query = query.clone();
+                blocking(|| database.query(query).unwrap())
+                    .map_err(|_| Error::new(ErrorKind::Other, "Blocking error"))
+            })
+        }))
     }
 }
 
@@ -102,35 +132,25 @@ struct SelectQuery {
 }
 
 fn main() {
-    let mut database = Database::new();
+    let mut resolver = DataResolver::new();
 
     let query = SelectQuery {
         field: String::from("foo"),
         value: String::from("bar"),
     };
 
+    // The threadpool that actually runs our futures.
+    let mut rt = Runtime::new().unwrap();
+
     // Create our two database calls, the dumb implementation will do a
     // blocking query and this actually does not help to make our system
     // faster.
-    let db_call_one = database.call(query.clone());
-    let db_call_two = database.call(query.clone());
+    dbg!("Creating the first future");
+    rt.spawn(resolver.call(query.clone()).then(|_| future::ok(())));
 
-    // A combined future, which will execute both futures at the same time. And
-    // return both results.
-    let joined = db_call_one.join(db_call_two);
+    dbg!("Creating the second future");
+    rt.spawn(resolver.call(query.clone()).then(|_| future::ok(())));
 
-    // Actually start polling the futures. Launces a threadpool, which call our futures in a certain way:
-    //
-    // `db_call_one` is a Future with a poll method, that executes the empty
-    // future::ok() or future::err(e) calling its `poll` function.
-    tokio::run(joined.then(|result| match result {
-        Ok((res1, res2)) => {
-            println!("{:?} and {:?}", res1, res2);
-            future::ok(())
-        }
-        Err(e) => {
-            println!("Error executing the futures: {:?}", e);
-            future::ok(())
-        }
-    }));
+    dbg!("Waiting for futures to finish...");
+    rt.shutdown_on_idle().wait().unwrap();
 }
