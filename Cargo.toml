@@ -7,5 +7,6 @@ edition = "2018"
 [dependencies]
 futures = "0.1"
 tokio-threadpool = "0.1"
+tokio = "0.1"
 tower-service = "0.2"
 sql = { git = "https://github.com/prisma/sql.git", branch = "master" }
