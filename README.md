@@ -4,6 +4,7 @@
 
  - https://docs.rs/futures/0.1.25/futures/future/fn.poll_fn.html
  - https://docs.rs/futures/0.1.25/futures/future/fn.lazy.html
+ - https://docs.rs/tokio-threadpool/0.1.11/src/tokio_threadpool/blocking.rs.html#124-157
  
 ## The quiz question
 
