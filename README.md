@@ -1,5 +1,12 @@
 # Rust Quiz 3
 
+## Links to discuss in the meeting
+
+ - https://docs.rs/futures/0.1.25/futures/future/fn.poll_fn.html
+ - https://docs.rs/futures/0.1.25/futures/future/fn.lazy.html
+ 
+## The quiz question
+
 This time we take a look into concurrency and parallel execution in Rust. In
 this example we have a slow database connection and we must make the queries to
 execute in parallel to speed up our service.
